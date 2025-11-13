@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import Hls from 'hls.js/dist/hls.js';
 import { Helmet } from 'react-helmet-async';
 
 const ICONS = {
@@ -66,7 +67,8 @@ const ICONS = {
 
 function WebRTCPlayer({ serverUrl, streamName, title }) {
   const videoRef = useRef(null);
-  const readerRef = useRef(null);
+  // const readerRef = useRef(null);
+  const hlsRef = useRef(null);
   const reconnectTimerRef = useRef(null);
 
   const [status, setStatus] = useState('idle');
@@ -75,9 +77,13 @@ function WebRTCPlayer({ serverUrl, streamName, title }) {
   useEffect(() => {
     const stopStreaming = () => {
       clearTimeout(reconnectTimerRef.current);
-      if (readerRef.current) {
-        readerRef.current.close();
-        readerRef.current = null;
+      // if (readerRef.current) {
+      //   readerRef.current.close();
+      //   readerRef.current = null;
+      // }
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
       }
     };
 
@@ -100,43 +106,68 @@ function WebRTCPlayer({ serverUrl, streamName, title }) {
         return;
       }
 
-      if (typeof window.MediaMTXWebRTCReader === 'undefined') {
-        const msg = 'MediaMTXWebRTCReader tidak ditemukan';
-        console.error(
-          `[${streamName}] ${msg} Pastikan script sudah dimuat di index.html`,
-        );
-        setStatus('error');
-        setStatusText(msg);
-        return;
-      }
+      // if (typeof window.MediaMTXWebRTCReader === 'undefined') {
+      //   const msg = 'MediaMTXWebRTCReader tidak ditemukan';
+      //   console.error(
+      //     `[${streamName}] ${msg} Pastikan script sudah dimuat di index.html`,
+      //   );
+      //   setStatus('error');
+      //   setStatusText(msg);
+      //   return;
+      // }
 
       setStatus('connecting');
       setStatusText('Menghubungkan...');
 
-      try {
-        const whepUrl = `${serverUrl}/${streamName}/whep`;
-
-        readerRef.current = new window.MediaMTXWebRTCReader({
-          url: whepUrl,
-          onTrack: (evt) => {
-            console.log(`[${streamName}] Video track diterima`);
-            if (videoRef.current) {
-              videoRef.current.srcObject = evt.streams[0];
-            }
-            setStatus('live');
-            setStatusText('LIVE');
-          },
-          onError: (err) => {
-            console.error(`[${streamName}] Gagal terhubung: ${err}`);
-            scheduleReconnect(err.message || 'Koneksi gagal');
-          },
+      if (
+        videoRef.current &&
+        videoRef.current.canPlayType('application/vnd.apple.mpegurl')
+      ) {
+        videoRef.current.src = `${serverUrl}/${streamName}/index.m3u8`;
+        videoRef.current.addEventListener('loadedmetadata', () => {
+          setStatus('live');
+          setStatusText('LIVE');
         });
 
-        console.log(`[${streamName}] Koneksi WebRTC berhasil dibuat.`);
-      } catch (error) {
-        console.error(`[${streamName}] Gagal memulai streaming:`, error);
-        setStatusText(`Gagal: ${error.message}. Coba lagi...`);
-        scheduleReconnect(error.message); // Coba lagi jika gagal
+        videoRef.current.addEventListener('error', () => {
+          scheduleReconnect('Gagal memuat stream native');
+        });
+      } else if (Hls && Hls.isSupported()) {
+        const hls = new Hls({
+          autoStartLoad: true,
+          startPosition: -1,
+        });
+        hlsRef.current = hls;
+
+        hls.loadSource(`${serverUrl}/${streamName}/index.m3u8`);
+        hls.attachMedia(videoRef.current);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          console.log(`[${title}] Manifest HLS berhasil dimuat.`);
+          setStatus('live');
+          setStatusText('LIVE');
+          videoRef.current.play();
+        });
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          console.error(`[${title}] Error HLS:`, data);
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                scheduleReconnect('Network error');
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                hls.recoverMediaError(); // Coba pulihkan
+                break;
+              default:
+                scheduleReconnect('Stream error fatal');
+                break;
+            }
+          }
+        });
+      } else {
+        setStatus('error');
+        setStatusText('HLS tidak didukung oleh browser ini.');
       }
     };
 
@@ -145,7 +176,7 @@ function WebRTCPlayer({ serverUrl, streamName, title }) {
     return () => {
       stopStreaming();
     };
-  }, [serverUrl, streamName]);
+  }, [serverUrl, streamName, title]);
 
   return (
     <div className="relative bg-black aspect-video w-full rounded-lg overflow-hidden shadow-lg">
@@ -158,7 +189,7 @@ function WebRTCPlayer({ serverUrl, streamName, title }) {
       <video
         ref={videoRef}
         // className="w-full h-full"
-        className="aspect-video"
+        className="aspect-video video-player"
         autoPlay
         muted
         playsInline
@@ -211,25 +242,6 @@ export function RTSPPage() {
             streamName={'mixing'}
             title={'Mixing'}
           />
-          {/* <div>
-            <video controls autoPlay className="aspect-video">
-              <source
-                // src="https://rtsp-server.boedakoding.com/stream?url=rtsp://admin:admin@192.168.1.185:554/cam/realmonitor?channel=1%26subtype=1"
-                src={rtspURLPackaging}
-                type="video/mp4"
-              />
-            </video>
-          </div>
-          <div>
-            <video controls autoPlay className="aspect-video">
-              <source src={rtspURLFilling} type="video/mp4" />
-            </video>
-          </div>
-          <div className="lg:col-span-1">
-            <video controls autoPlay className="aspect-video">
-              <source src={rtspURLMixing} type="video/mp4" />
-            </video>
-          </div> */}
         </div>
       </div>
     </>
