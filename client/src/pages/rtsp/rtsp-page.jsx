@@ -122,7 +122,6 @@ function WebRTCPlayer({ serverUrl, streamName, title }) {
         });
 
         hls.on(Hls.Events.ERROR, (event, data) => {
-          console.error(`[${title}] Error HLS:`, data);
           if (data.fatal) {
             switch (data.type) {
               case Hls.ErrorTypes.NETWORK_ERROR:
