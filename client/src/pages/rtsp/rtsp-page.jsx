@@ -67,7 +67,6 @@ const ICONS = {
 
 function WebRTCPlayer({ serverUrl, streamName, title }) {
   const videoRef = useRef(null);
-  // const readerRef = useRef(null);
   const hlsRef = useRef(null);
   const reconnectTimerRef = useRef(null);
 
@@ -77,10 +76,6 @@ function WebRTCPlayer({ serverUrl, streamName, title }) {
   useEffect(() => {
     const stopStreaming = () => {
       clearTimeout(reconnectTimerRef.current);
-      // if (readerRef.current) {
-      //   readerRef.current.close();
-      //   readerRef.current = null;
-      // }
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
@@ -106,33 +101,10 @@ function WebRTCPlayer({ serverUrl, streamName, title }) {
         return;
       }
 
-      // if (typeof window.MediaMTXWebRTCReader === 'undefined') {
-      //   const msg = 'MediaMTXWebRTCReader tidak ditemukan';
-      //   console.error(
-      //     `[${streamName}] ${msg} Pastikan script sudah dimuat di index.html`,
-      //   );
-      //   setStatus('error');
-      //   setStatusText(msg);
-      //   return;
-      // }
-
       setStatus('connecting');
       setStatusText('Menghubungkan...');
 
-      if (
-        videoRef.current &&
-        videoRef.current.canPlayType('application/vnd.apple.mpegurl')
-      ) {
-        videoRef.current.src = `${serverUrl}/${streamName}/index.m3u8`;
-        videoRef.current.addEventListener('loadedmetadata', () => {
-          setStatus('live');
-          setStatusText('LIVE');
-        });
-
-        videoRef.current.addEventListener('error', () => {
-          scheduleReconnect('Gagal memuat stream native');
-        });
-      } else if (Hls && Hls.isSupported()) {
+      if (Hls && Hls.isSupported()) {
         const hls = new Hls({
           autoStartLoad: true,
           startPosition: -1,
@@ -164,6 +136,22 @@ function WebRTCPlayer({ serverUrl, streamName, title }) {
                 break;
             }
           }
+        });
+      } else if (
+        videoRef.current &&
+        videoRef.current.canPlayType('application/vnd.apple.mpegurl')
+      ) {
+        console.warn(
+          `[${title}] hls.js tidak didukung, menggunakan pemutar native`,
+        );
+        videoRef.current.src = `${serverUrl}/${streamName}/index.m3u8`;
+        videoRef.current.addEventListener('loadedmetadata', () => {
+          setStatus('live');
+          setStatusText('LIVE');
+        });
+
+        videoRef.current.addEventListener('error', () => {
+          scheduleReconnect('Gagal memuat stream native');
         });
       } else {
         setStatus('error');
