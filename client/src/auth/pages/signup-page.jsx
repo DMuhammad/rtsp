@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useAuth } from '@/auth/context/auth-context';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   AlertCircle,
@@ -22,6 +21,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { useAuth } from '../context/auth-context';
 import { getSignupSchema } from '../forms/signup-schema';
 
 export function SignUpPage() {
@@ -39,8 +39,6 @@ export function SignUpPage() {
       email: '',
       password: '',
       confirmPassword: '',
-      firstName: '',
-      lastName: '',
     },
   });
 
@@ -49,22 +47,11 @@ export function SignUpPage() {
       setIsProcessing(true);
       setError(null);
 
-      // Register the user with Supabase
-      await register(
-        values.email,
-        values.password,
-        values.confirmPassword,
-        values.firstName,
-        values.lastName,
-      );
+      await register(values.email, values.password, values.confirmPassword);
 
-      // Set success message and metadata
       setSuccessMessage(
-        'Registration successful! Please check your email to confirm your account.',
+        'Registration successful!. Wait for redirect to login page!',
       );
-
-      // After successful registration, you might want to update the user profile
-      // with additional metadata (firstName, lastName, etc.)
 
       // Optionally redirect to login page after a delay
       setTimeout(() => {
@@ -72,11 +59,13 @@ export function SignUpPage() {
       }, 3000);
     } catch (err) {
       console.error('Registration error:', err);
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'An unexpected error occurred during registration. Please try again.',
-      );
+      if (err.code === 'auth/email-already-in-use') {
+        setError('Email already in use !');
+      } else {
+        setError(
+          'An unexpected error occurred during registration. Please try again.',
+        );
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -120,34 +109,6 @@ export function SignUpPage() {
               <AlertTitle>{successMessage}</AlertTitle>
             </Alert>
           )}
-
-          <FormField
-            control={form.control}
-            name="firstName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>First Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter your first name" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="lastName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Last Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter your last name" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
 
           <FormField
             control={form.control}
