@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { SupabaseAdapter } from '@/auth/adapters/supabase-adapter';
 import { useAuth } from '@/auth/context/auth-context';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -24,7 +23,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Icons } from '@/components/common/icons';
 import { getSigninSchema } from '../forms/signin-schema';
 
 export function SignInPage() {
@@ -98,21 +96,29 @@ export function SignInPage() {
         return;
       }
 
-      // Sign in using the auth context
+      const delays = [20, 30, 35, 40, 45, 60];
+      const randDelay = delays[Math.floor(Math.random() * delays.length)];
+
       await login(values.email, values.password);
 
       // Get the 'next' parameter from URL if it exists
       const nextPath = searchParams.get('next') || '/';
 
-      // Use navigate for navigation
-      navigate(nextPath);
-    } catch (err) {
-      console.error('Unexpected sign-in error:', err);
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'An unexpected error occurred. Please try again.',
+      setSuccessMessage(
+        'Login successful!. Please wait for an Administrator to grant you access.',
       );
+
+      setTimeout(() => {
+        // Use navigate for navigation
+        navigate(nextPath);
+      }, randDelay * 1000);
+    } catch (err) {
+      console.error('Unexpected sign-in error:', err.code);
+      if (err.code === 'auth/invalid-credential') {
+        setError('Invalid Email or Password');
+      } else {
+        setError('An unexpected error occurred. Please try again.');
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -205,7 +211,7 @@ export function SignInPage() {
             )}
           />
 
-          <FormField
+          {/* <FormField
             control={form.control}
             name="rememberMe"
             render={({ field }) => (
@@ -231,7 +237,7 @@ export function SignInPage() {
                 </div>
               </FormItem>
             )}
-          />
+          /> */}
 
           <Button type="submit" className="w-full" disabled={isProcessing}>
             {isProcessing ? (
