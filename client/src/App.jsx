@@ -4,8 +4,7 @@ import { QueryClient, QueryClientProvider } from 'react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { LoadingBarContainer } from 'react-top-loading-bar';
 import { Toaster } from '@/components/ui/sonner';
-import { AuthProvider } from './auth/providers/supabase-provider';
-import { QueryProvider } from './providers/query-provider';
+import { AuthProvider } from './auth/providers/firebase-provider';
 import { SettingsProvider } from './providers/settings-provider';
 import { ThemeProvider } from './providers/theme-provider';
 
@@ -20,14 +19,12 @@ export function App() {
         <SettingsProvider>
           <ThemeProvider>
             <HelmetProvider>
-              <QueryProvider>
-                <LoadingBarContainer>
-                  <BrowserRouter basename={BASE_URL}>
-                    <Toaster />
-                    <AppRouting />
-                  </BrowserRouter>
-                </LoadingBarContainer>
-              </QueryProvider>
+              <LoadingBarContainer>
+                <BrowserRouter basename={BASE_URL}>
+                  <Toaster />
+                  <AppRouting />
+                </BrowserRouter>
+              </LoadingBarContainer>
             </HelmetProvider>
           </ThemeProvider>
         </SettingsProvider>
