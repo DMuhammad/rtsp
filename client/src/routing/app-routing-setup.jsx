@@ -8,11 +8,11 @@ import { Navigate, Route, Routes } from 'react-router';
 export function AppRoutingSetup() {
   return (
     <Routes>
-      <Route element={<Demo1Layout />}>
-        <Route path="/" element={<RTSPPage />} />
+      <Route element={<RequireAuth />}>
+        <Route element={<Demo1Layout />}>
+          <Route path="/" element={<RTSPPage />} />
+        </Route>
       </Route>
-      {/* <Route element={<RequireAuth />}>
-      </Route> */}
       <Route path="error/*" element={<ErrorRouting />} />
       <Route path="auth/*" element={<AuthRouting />} />
       <Route path="*" element={<Navigate to="/error/404" />} />
